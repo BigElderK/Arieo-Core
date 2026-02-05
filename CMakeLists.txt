@@ -1,6 +1,7 @@
 cmake_minimum_required (VERSION 3.31)
 
-include(${ARIEO_PACKAGE_BUILDENV_SOURCE_FOLDER}/cmake/engine_project.cmake)
+project(ArieoEngine)
+include($ENV{ARIEO_PACKAGE_BUILDENV_OUTPUT_FOLDER}/cmake/engine_project.cmake)
 if(CMAKE_SYSTEM_NAME STREQUAL "Android")
     arieo_engine_project(
         arieo_core
@@ -21,7 +22,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Android")
         LIBS
             log
             android
-            arieo::base
             easyloggingpp::easyloggingpp
             yaml-cpp::yaml-cpp
             fmt::fmt
@@ -46,7 +46,6 @@ else()
             mathfu
             concurrentqueue
         LIBS
-            arieo::base
             easyloggingpp::easyloggingpp
             yaml-cpp::yaml-cpp
             fmt::fmt
@@ -54,6 +53,4 @@ else()
             concurrentqueue::concurrentqueue
     )
 endif()
-
-
         
