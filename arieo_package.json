@@ -5,6 +5,10 @@
     [
         "cmake -P build_package.cmake"
     ],
+    "install_commands": 
+    [
+        "cmake -P install_package.cmake"
+    ],
     "dependencies": 
     {
         "packages": [
