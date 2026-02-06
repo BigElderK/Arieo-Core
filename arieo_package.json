@@ -3,11 +3,11 @@
     "description": "Core engine librarie",
     "build_commands":
     [
-        "cmake -P build_package.cmake"
+        "cmake -P $ENV{ARIEO_PACKAGE_BUILDENV_INSTALL_FOLDER}/cmake/package/build_engine_project_package.cmake"
     ],
     "install_commands": 
     [
-        "cmake -P install_package.cmake"
+        "cmake -P $ENV{ARIEO_PACKAGE_BUILDENV_INSTALL_FOLDER}/cmake/package/install_engine_project_package.cmake"
     ],
     "dependencies": 
     {
