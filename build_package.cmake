@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 # Include the function definition
-include($ENV{ARIEO_PACKAGE_BUILDENV_INSTALL_FOLDER}/cmake/build_engine_project.cmake)
+include($ENV{ARIEO_PACKAGE_BUILDENV_INSTALL_FOLDER}/cmake/build_environment.cmake)
 
 # Check if required environment variables are set
 if(NOT DEFINED ENV{ARIEO_PACKAGE_BUILDENV_HOST_PRESET})
