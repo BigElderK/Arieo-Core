@@ -4,7 +4,7 @@ include($ENV{ARIEO_PACKAGE_BUILDENV_INSTALL_FOLDER}/cmake/build_environment.cmak
 project(ArieoEngine)
 if(CMAKE_SYSTEM_NAME STREQUAL "Android")
     arieo_engine_project(
-        areio.engine.core
+        arieo_engine_core
         PROJECT_TYPE static_library
         PUBLIC_INCLUDE_FOLDERS
             ${CMAKE_CURRENT_LIST_DIR}/public/include
@@ -29,7 +29,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Android")
     )
 else()
     arieo_engine_project(
-        areio.engine.core
+        arieo_engine_core
         PROJECT_TYPE static_library
         PUBLIC_INCLUDE_FOLDERS
             ${CMAKE_CURRENT_LIST_DIR}/public/include
