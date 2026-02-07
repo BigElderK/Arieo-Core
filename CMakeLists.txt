@@ -18,14 +18,16 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Android")
             fmt
             mathfu
             concurrentqueue
-        LIBS
-            log
-            android
-            easyloggingpp::easyloggingpp
+        PUBLIC_LIBS
             yaml-cpp::yaml-cpp
             fmt::fmt
             mathfu::mathfu
             concurrentqueue::concurrentqueue
+        PRIVATE_LIBS
+            log
+            android
+            easyloggingpp::easyloggingpp
+            
     )
 else()
     arieo_engine_project(
@@ -43,12 +45,14 @@ else()
             fmt
             mathfu
             concurrentqueue
-        LIBS
-            easyloggingpp::easyloggingpp
+        PUBLIC_LIBS
             yaml-cpp::yaml-cpp
             fmt::fmt
             mathfu::mathfu
             concurrentqueue::concurrentqueue
+        PRIVATE_LIBS
+            easyloggingpp::easyloggingpp
+            
     )
 endif()
         
