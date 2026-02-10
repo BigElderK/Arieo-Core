@@ -1,7 +1,7 @@
 {
     "name": "Arieo-Core",
     "description": "Core engine librarie",
-    "cmake_presets_file": "${ARIEO_BUILDENV_PACKAGE_INSTALL_FOLDER}/cmake/CMakePresets.json",
+    "cmake_presets_file": "$ENV{ARIEO_BUILDENV_PACKAGE_INSTALL_FOLDER}/cmake/CMakePresets.json",
     "build_commands": 
     [
         "${CMAKE_COMMAND} --build ."
