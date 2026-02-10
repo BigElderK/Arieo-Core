@@ -1,6 +1,7 @@
 cmake_minimum_required (VERSION 3.31)
 
-include($ENV{ARIEO_BUILDENV_PACKAGE_INSTALL_FOLDER}/cmake/build_environment.cmake)
+include(${ARIEO_BUILDENV_PACKAGE_INSTALL_FOLDER}/cmake/build_environment.cmake)
+
 project(ArieoEngine)
 if(CMAKE_SYSTEM_NAME STREQUAL "Android")
     arieo_engine_project(
