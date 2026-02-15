@@ -1,7 +1,7 @@
 
 #include "base/prerequisites.h"
 #include "core/core.h"
-
+#include <regex>
 namespace Arieo::Core
 {
     std::string SystemUtility::getHostOSName()
@@ -64,8 +64,18 @@ namespace Arieo::Core
 
         Base::StringUtility::replaceAll(result_path, "${EXE_DIR}", exe_path.string());
         Base::StringUtility::replaceAll(result_path, "${MODULE_DIR}", module_path.string());
-        Base::StringUtility::replaceAll(result_path, "$ENV{APP_INTERNAL_DATA_DIR}", SystemUtility::Environment::getEnvironmentValue("APP_INTERNAL_DATA_DIR"));
-        Base::StringUtility::replaceAll(result_path, "$ENV{APP_EXTERNAL_DATA_DIR}", SystemUtility::Environment::getEnvironmentValue("APP_EXTERNAL_DATA_DIR"));
+
+        // Replace environment variables in the format of $ENV{VAR_NAME}
+        {
+            std::regex env_pattern(R"(\$ENV\{([^}]+)\})");
+            std::smatch match;
+            while (std::regex_search(result_path, match, env_pattern))
+            {
+                std::string env_name = match[1].str();
+                std::string env_value = SystemUtility::Environment::getEnvironmentValue(env_name);
+                result_path = match.prefix().str() + env_value + match.suffix().str();
+            }
+        }
 
         #define STRINGIFY2(X) #X
         #define STRINGIFY(X) STRINGIFY2(X)
