@@ -60,4 +60,3 @@ else()
             ${CMAKE_CURRENT_LIST_DIR}/private/src/*.cpp    
     )
 endif()
-        
