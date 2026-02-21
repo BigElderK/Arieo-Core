@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 3.31)
 
 include($ENV{ARIEO_BUILD_ENV_PACKAGES_OUTPUT_DIR}/cmake/build_environment.cmake)
 
-ArieoPackage(
+ARIEO_PACKAGE(
     Arieo-Core
     CATEGORY 02_engine
     COMPONENTS
@@ -10,7 +10,7 @@ ArieoPackage(
 )
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Android")
-    arieo_engine_project(
+    ARIEO_ENGINE_PROJECT(
         arieo_core
         PROJECT_TYPE static_library
 
@@ -41,7 +41,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Android")
                 ${CMAKE_CURRENT_LIST_DIR}/private/src/*.cpp
     )
 else()
-    arieo_engine_project(
+    ARIEO_ENGINE_PROJECT(
         arieo_core
         PROJECT_TYPE static_library
 
