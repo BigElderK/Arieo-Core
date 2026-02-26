@@ -22,7 +22,7 @@ namespace Arieo::Core
     void ProcessSingletonRegister::registerProcessSingleton(size_t hash, void* instance)
     {
         std::lock_guard<std::mutex> lock(mutex);
-        assert(m_instance_map.contains(hash));
+        assert(m_instance_map.contains(hash) == false && "Singleton instance for this type has already been registered.");
         m_instance_map.emplace(hash, instance);
     }
 

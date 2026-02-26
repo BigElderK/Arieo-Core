@@ -14,6 +14,40 @@ namespace Arieo::Core
 
 namespace Arieo::Base
 {
+    // Value types crossing DLL boundaries must be standard layout, trivially copyable, and have no padding
+    template<typename T>
+    inline constexpr bool DLLBoundarySafeCheck =
+        std::is_standard_layout_v<T> &&
+        std::is_trivially_copyable_v<T> &&
+        std::has_unique_object_representations_v<T>;
+
+    // A parameter/return type is safe across DLL if it's:
+    //   - void (return only)
+    //   - a pointer or reference (caller/callee share address space)
+    //   - a value type that passes DLLBoundarySafeCheck
+    template<typename T>
+    inline constexpr bool DLLBoundarySafeParam =
+        std::is_void_v<T> ||
+        std::is_pointer_v<T> ||
+        std::is_reference_v<T> ||
+        DLLBoundarySafeCheck<std::remove_cv_t<T>>;
+
+    // Decompose a member function pointer and check all parameter + return types
+    template<typename T>
+    struct DLLSafeMemberFunctionCheck : std::false_type {};
+
+    template<typename R, typename C, typename... Args>
+    struct DLLSafeMemberFunctionCheck<R(C::*)(Args...)>
+        : std::bool_constant<DLLBoundarySafeParam<R> && (DLLBoundarySafeParam<Args> && ...)> {};
+
+    // const-qualified overload
+    template<typename R, typename C, typename... Args>
+    struct DLLSafeMemberFunctionCheck<R(C::*)(Args...) const>
+        : std::bool_constant<DLLBoundarySafeParam<R> && (DLLBoundarySafeParam<Args> && ...)> {};
+}
+
+namespace Arieo::Base
+{
     // template <typename TInstance, typename TInterface>
     // inline TInstance* castInterfaceToInstance(TInterface* interface)
     // {
@@ -55,6 +89,8 @@ namespace Arieo::Base
     class Interface    
     {
     private:
+    
+    private:
         TInterface* m_interface = nullptr;
         Interface(TInterface* interface) : m_interface(interface) {}
         friend class Arieo::Core::ModuleManager;
@@ -64,25 +100,11 @@ namespace Arieo::Base
     public:
         Interface() = default;
         Interface(std::nullptr_t) : m_interface(nullptr) {}
-        Interface(const Interface& other) noexcept : m_interface(other.m_interface) {}
-        Interface(Interface&& other) noexcept : m_interface(other.m_interface) {
-            other.m_interface = nullptr;
-        }
-
-        // Move assignment operator
-        Interface& operator=(Interface&& other) noexcept {
-            if (this != &other) {
-                m_interface = other.m_interface;
-                other.m_interface = nullptr;
-            }
-            return *this;
-        }
-
-        // Copy assignment operator
-        Interface& operator=(Interface& other) noexcept {
-            m_interface = other.m_interface;
-            return *this;
-        }
+        Interface(const Interface&) noexcept = default;
+        Interface(Interface&&) noexcept = default;
+        Interface& operator=(const Interface&) noexcept = default;
+        Interface& operator=(Interface&&) noexcept = default;
+        ~Interface() = default;
 
         Interface& operator=(std::nullptr_t)
         {
@@ -150,9 +172,43 @@ namespace Arieo::Base
         }
     };
 
+    static_assert(Base::DLLBoundarySafeCheck<Interface<void>>, "Interface<T> must be DLL boundary safe");
+
     template<typename T>
     class InterfaceInfo
     {
+    };
+
+    namespace Parameter
+    {
+        class String
+        {
+        private:
+            void* buf = nullptr;
+            size_t size = 0;
+        public:
+            String() = delete;
+            String(const String&) = delete;
+            String(String&&) = delete;
+
+            String(const std::string& str)
+            {
+                size = str.size();
+                buf = (void*)str.c_str();
+            }
+
+            String(const char str[])
+            {
+                size = std::strlen(str);
+                buf = (void*)str;
+            }
+
+            std::string getString() const
+            {
+                return std::string((char*)buf, size);
+            }
+        };
+        static_assert(Base::DLLBoundarySafeCheck<String>, "Parameter::String must be DLL boundary safe");
     };
 }
 
