@@ -64,3 +64,7 @@ namespace Arieo::Base::View
         auto end() { return std::ranges::end(m_std_view); }
     };
 };
+
+
+
+

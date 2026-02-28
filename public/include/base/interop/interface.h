@@ -13,3 +13,8 @@ namespace Arieo::Base
 }
 
 #define METADATA(x) [[clang::annotate(#x)]]
+
+
+
+
+

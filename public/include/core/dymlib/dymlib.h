@@ -26,3 +26,7 @@ namespace Arieo::Core
     #define ARIEO_CLASS_API __attribute__((visibility("default")))
 #endif
 }
+
+
+
+

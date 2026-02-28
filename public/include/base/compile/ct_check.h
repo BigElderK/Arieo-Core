@@ -44,3 +44,7 @@ namespace Arieo::Base
             : std::bool_constant<DLLBoundarySafeParam<R> && (DLLBoundarySafeParam<Args> && ...)> {};
     }
 }
+
+
+
+

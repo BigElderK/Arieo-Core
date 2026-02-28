@@ -62,3 +62,7 @@ size_t operator()(const typename Arieo::Base::EquivalType<TType, EType>& p) cons
     return std::hash<EType>{}(p.m_value);
 }
 };
+
+
+
+

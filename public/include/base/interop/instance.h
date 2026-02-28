@@ -10,6 +10,15 @@ namespace Arieo::Base
     template<typename T>
     class InteropOld;
 
+    namespace Interop
+    {
+        template<typename T>
+        class WeakRef;
+
+        template<typename T>
+        class RawRef;
+    }
+
     class RefControlBlock
     {
     protected:
@@ -101,9 +110,14 @@ namespace Arieo::Base
         const TInstance* operator->() const { return &m_instance; }
 
         template<typename TInterface>
-        Base::InteropOld<TInterface> queryInterface()
+        Base::Interop::RawRef<TInterface> queryInterface()
         {
-            return Base::InteropOld<TInterface>(static_cast<TInterface*>(&m_instance));
+            return Base::Interop::RawRef<TInterface>(static_cast<TInterface*>(&m_instance));
         }
+
+        uint32_t getTypeHash() const { return m_type_hash; }
     };
 }
+
+
+

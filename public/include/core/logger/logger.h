@@ -63,3 +63,7 @@ namespace Arieo::Core
     
     #define ARIEO_ASSERT(condition) if(!(condition)){Arieo::Core::Logger::fatal(#condition);}
 }
+
+
+
+

@@ -96,3 +96,8 @@ namespace Arieo::Base
         return ct::genCrc32StringID(str);
     }
 }
+
+
+
+
+

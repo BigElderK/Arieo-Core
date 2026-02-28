@@ -25,3 +25,7 @@ namespace Arieo::Base
 
     ARIEO_DEFINE_EQUIVAL_TYPE(StringID, std::uint32_t);
 }
+
+
+
+

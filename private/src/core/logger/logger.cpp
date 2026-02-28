@@ -135,3 +135,8 @@ namespace Arieo::Core
         g_default_logger->fatal(expression);
     }
 }
+
+
+
+
+

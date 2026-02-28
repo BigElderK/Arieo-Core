@@ -45,3 +45,7 @@ namespace Arieo::Core
         static std::string getHostOSName();
     };
 }
+
+
+
+
