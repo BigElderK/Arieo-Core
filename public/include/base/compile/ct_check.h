@@ -23,6 +23,13 @@ namespace Arieo::Base
             std::is_reference_v<T> ||
             DLLBoundarySafeCheck<std::remove_cv_t<T>>;
 
+        // Structural layout check for resource-managing types (e.g., ref-counted smart pointers)
+        // that are safe across DLL boundaries due to having a fixed, standard layout,
+        // but are NOT trivially copyable (non-trivial dtor / copy / move).
+        template<typename T>
+        inline constexpr bool DLLBoundaryLayoutSafe =
+            std::is_standard_layout_v<T>;
+
         // Decompose a member function pointer and check all parameter + return types
         template<typename T>
         struct DLLSafeMemberFunctionCheck : std::false_type {};
