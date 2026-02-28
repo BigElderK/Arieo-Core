@@ -15,6 +15,12 @@ namespace Arieo::Base
 #define METADATA(x) [[clang::annotate(#x)]]
 
 
-
-
-
+namespace Arieo::Base
+{
+    class IBuffer
+    {
+    public:
+        virtual void* getBuffer() = 0;
+        virtual size_t getBufferSize() = 0;
+    };
+}
