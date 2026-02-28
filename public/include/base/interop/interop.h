@@ -608,6 +608,30 @@ namespace std {
 
 namespace Arieo::Base::Interop
 {
-    
+    class StringView
+    {
+    private:
+        void* buf = nullptr;
+        size_t size = 0;
+    public:
+        StringView() = delete;
+        StringView(const StringView&) noexcept = delete;
+        StringView(StringView&&) noexcept = delete;
+        StringView& operator=(const StringView&) noexcept = delete;
+        StringView& operator=(StringView&&) noexcept = delete;
+        ~StringView() = default;
+
+        StringView(const std::string_view& str)
+            : buf((void*)str.data()), size(str.size()) {}
+
+        StringView(const char str[])
+            : buf((void*)str), size(std::strlen(str)) {}
+
+        std::string getString() const
+        {
+            return std::string((char*)buf, size);
+        }
+    };
+    static_assert(Base::ct::DLLBoundarySafeCheck<StringView>, "StringView must be DLL boundary safe");
 }
 
