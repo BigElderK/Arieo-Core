@@ -2,6 +2,7 @@
 #include <cstddef>
 #include <type_traits>
 #include "base/compile/ct_check.h"
+#include "base/interface/instance.h"
 #include "core/logger/logger.h"
 
 namespace Arieo::Core
@@ -168,16 +169,29 @@ namespace Arieo::Base
         bool operator==(Interop<TInterface> const& other) const { return m_interface == other.m_interface; }
         bool operator!=(Interop<TInterface> const& other) const { return m_interface != other.m_interface; }
 
-        template<typename TInstance, typename... Args>
+        template<typename TInstance, InstanceFlags Flags = InstanceFlags::None, typename... Args>
         static Interop<TInterface> createAs(Args&&... args)
         {
-            const uint32_t hash = static_cast<uint32_t>(std::hash<std::string_view>{}(typeid(TInstance).name()));
-            Core::Logger::trace("Creating instance of type {} with hash {}", typeid(TInstance).name(), hash);
-            TInstance* new_instance = new (Arieo::Base::Memory::malloc(sizeof(TInstance) + sizeof(uint32_t) + sizeof(uint32_t))) TInstance(std::forward<Args>(args)...);
-            uint32_t* type_hash_ptr = reinterpret_cast<uint32_t*>(reinterpret_cast<std::byte*>(new_instance) + sizeof(TInstance) + sizeof(uint32_t));
-            *type_hash_ptr = hash;
+            Instance<TInstance>* new_instance = new (Base::Memory::malloc(sizeof(Instance<TInstance>))) Instance<TInstance, Flags>(std::forward<Args>(args)...);
+            return new_instance->template queryInterface<TInterface>();
+        }
 
-            return Interop<TInterface>(new_instance);
+        template<typename TInstance>
+        static void destroyAs(Interop<TInterface>&& interop)
+        {
+            const uint32_t hash = static_cast<uint32_t>(std::hash<std::string_view>{}(typeid(TInstance).name()));
+            Instance<TInstance>* instance = reinterpret_cast<Instance<TInstance>*>(interop.m_interface);
+            
+            if(instance->m_type_hash != hash)
+            {
+                Core::Logger::fatal("Type hash mismatch when destroying instance. Expected: {}, Actual: {}", hash, instance->m_type_hash);
+                return;
+            }
+
+            instance->~Instance<TInstance>();
+            Arieo::Base::Memory::free(interop.m_interface);
+
+            interop.m_interface = nullptr;
         }
 
         template <typename TInstance>
@@ -191,23 +205,6 @@ namespace Arieo::Base
                 return nullptr;
             }
             return static_cast<TInstance*>(m_interface);
-        }
-
-        template<typename TInstance>
-        void destroyAs()
-        {
-            const uint32_t hash = static_cast<uint32_t>(std::hash<std::string_view>{}(typeid(TInstance).name()));
-            uint32_t* type_hash_ptr = reinterpret_cast<uint32_t*>(reinterpret_cast<std::byte*>(m_interface) + sizeof(TInstance) + sizeof(uint32_t));
-            
-            if(*type_hash_ptr != hash)
-            {
-                Core::Logger::fatal("Type hash mismatch when destroying instance. Expected: {}, Actual: {}", hash, *type_hash_ptr);
-                return;
-            }
-
-            reinterpret_cast<TInstance*>(m_interface)->TInstance::~TInstance();
-            Arieo::Base::Memory::free(m_interface);
-            m_interface = nullptr;
         }
     };
     static_assert(Base::ct::DLLBoundarySafeCheck<Interop<void>>, "Interop<T> must be DLL boundary safe");

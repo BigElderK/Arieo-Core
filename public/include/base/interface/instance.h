@@ -3,10 +3,13 @@
 #include "core/logger/logger.h"
 #include <cstddef>
 #include <type_traits>
-#include "interop.h"
 
 namespace Arieo::Base
 {
+    // Forward declaration of Interop (defined in interop.h)
+    template<typename T>
+    class Interop;
+
     // Define flags as an enum with power-of-2 values
     enum class InstanceFlags : uint32_t {
         None           = 0,
@@ -42,6 +45,7 @@ namespace Arieo::Base
                         RefCountStorage, Empty> m_ref;
 
         template<typename> friend class Interface;
+        template<typename> friend class Interop;
 
     public:
         template<typename... Args>
@@ -67,11 +71,6 @@ namespace Arieo::Base
         size_t refCount() const requires (hasFlag(Flags, InstanceFlags::EnableRefCount))
         {
             return m_ref.m_ref_count.load(std::memory_order_relaxed);
-        }
-
-        Base::Interop<TInstance> getInstance() 
-        { 
-            return Base::Interop<TInstance>(&m_instance); 
         }
 
         template<typename TInterface>
