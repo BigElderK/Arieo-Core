@@ -150,11 +150,16 @@ namespace Arieo::Base::Interop
         explicit operator bool() const noexcept { return m_ptr != nullptr; }
 
         // --- Comparisons ---
-        bool operator==(const SharedRef& other) const noexcept { return m_ptr == other.m_ptr; }
-        bool operator!=(const SharedRef& other) const noexcept { return m_ptr != other.m_ptr; }
+        bool operator==(const SharedRef& other) const noexcept { return m_ref_control_block == other.m_ref_control_block; }
+        bool operator!=(const SharedRef& other) const noexcept { return m_ref_control_block != other.m_ref_control_block; }
         bool operator<(const SharedRef& other) const noexcept { return m_ptr < other.m_ptr; }
-        bool operator==(std::nullptr_t) const noexcept { return m_ptr == nullptr; }
-        bool operator!=(std::nullptr_t) const noexcept { return m_ptr != nullptr; }
+        bool operator==(std::nullptr_t) const noexcept { return m_ref_control_block == nullptr; }
+        bool operator!=(std::nullptr_t) const noexcept { return m_ref_control_block != nullptr; }
+
+        template<typename U>
+        bool operator==(const SharedRef<U>& other) const noexcept { return m_ref_control_block == other.m_ref_control_block; }
+        template<typename U>
+        bool operator!=(const SharedRef<U>& other) const noexcept { return m_ref_control_block != other.m_ref_control_block; }
 
         // Allow SharedRef<U> to access our internals for converting ctors
         template<typename U>
@@ -167,13 +172,24 @@ namespace Arieo::Base::Interop
         TInstance* castToInstance()
         {
             const uint32_t hash = static_cast<uint32_t>(std::hash<std::string_view>{}(typeid(TInstance).name()));
-            uint32_t* type_hash_ptr = reinterpret_cast<uint32_t*>(reinterpret_cast<std::byte*>(static_cast<TInstance*>(m_ptr)) + sizeof(TInstance));
-            if(*type_hash_ptr != hash)            
+            if(m_ref_control_block->m_instance_type_hash != hash)            
             {
-                Core::Logger::fatal("Type hash mismatch when casting instance. Expected: {}, Actual: {}", hash, *type_hash_ptr);
+                Core::Logger::fatal("Type hash mismatch when casting instance. Expected: {}, Actual: {}", hash, m_ref_control_block->m_instance_type_hash);
                 return nullptr;
             }
             return static_cast<TInstance*>(m_ptr);
+        }
+
+        template <typename U>
+        SharedRef<U> queryInterface()
+        {
+            return SharedRef<U>(static_cast<T*>(m_ptr), m_ref_control_block);
+        }
+
+        template <typename U>
+        SharedRef<U> queryInterfaceForcely()
+        {
+            return SharedRef<U>(static_cast<U*>(m_ptr), m_ref_control_block);
         }
     };
     static_assert(Base::ct::DLLBoundaryLayoutSafe<SharedRef<void>>, "SharedRef<T> must be DLL boundary safe");
@@ -298,6 +314,17 @@ namespace Arieo::Base::Interop
             swap(tmp);
             return *this;
         }
+
+        // --- Comparisons ---
+        bool operator==(const WeakRef& other) const noexcept { return m_ref_control_block == other.m_ref_control_block; }
+        bool operator!=(const WeakRef& other) const noexcept { return m_ref_control_block != other.m_ref_control_block; }
+        bool operator==(std::nullptr_t) const noexcept { return m_ref_control_block == nullptr; }
+        bool operator!=(std::nullptr_t) const noexcept { return m_ref_control_block != nullptr; }
+
+        template<typename U>
+        bool operator==(const WeakRef<U>& other) const noexcept { return m_ref_control_block == other.m_ref_control_block; }
+        template<typename U>
+        bool operator!=(const WeakRef<U>& other) const noexcept { return m_ref_control_block != other.m_ref_control_block; }
 
         // --- Modifiers ---
         void reset() noexcept
@@ -464,7 +491,24 @@ namespace Arieo::Base::Interop
     protected:
         T* m_ptr = nullptr;
 
+        template<typename TInstance>
+        class InstanceBlock
+        {
+        public:
+            template<typename... Args>
+            InstanceBlock(Args&&... args)
+                : m_instance(std::forward<Args>(args)...)
+            {
+            }
+            TInstance m_instance;
+            uint32_t m_type_hash = 0;
+        };
     public:
+        RawRef(SharedRef<T>& shared_ref) noexcept
+            : m_ptr(shared_ref.get())
+        {
+        }
+
         RawRef() noexcept = default;
         RawRef(std::nullptr_t) noexcept {}
         RawRef(T* ptr) noexcept : m_ptr(ptr) {}
@@ -514,26 +558,29 @@ namespace Arieo::Base::Interop
         }
 
         template<typename TInstance, typename... Args>
+            requires std::is_convertible_v<TInstance*, T*>
         static RawRef<T> createAs(Args&&... args)
         {
-            Instance<TInstance>* new_instance = new (Base::Memory::malloc(sizeof(Instance<TInstance>))) Instance<TInstance>(std::forward<Args>(args)...);
-            return RawRef<T>(static_cast<T*>(new_instance->operator->()));
+            InstanceBlock<TInstance>* new_instance_block = new (Base::Memory::malloc(sizeof(InstanceBlock<TInstance>))) InstanceBlock<TInstance>(std::forward<Args>(args)...);
+            new_instance_block->m_type_hash = static_cast<uint32_t>(std::hash<std::string_view>{}(typeid(TInstance).name()));
+            return RawRef<T>(reinterpret_cast<TInstance*>(new_instance_block));
         }
 
-        template<typename TInstance>
+        template<typename TInstance> 
+            requires std::is_convertible_v<TInstance*, T*>
         static void destroyAs(RawRef<T>&& interface)
         {
             const uint32_t hash = static_cast<uint32_t>(std::hash<std::string_view>{}(typeid(TInstance).name()));
-            Instance<TInstance>* instance = reinterpret_cast<Instance<TInstance>*>(interface.m_ptr);
+            InstanceBlock<TInstance>* instance_block = reinterpret_cast<InstanceBlock<TInstance>*>(static_cast<TInstance*>(interface.m_ptr));
             
-            if(instance->getTypeHash() != hash)
+            if(instance_block->m_type_hash != hash)
             {
-                Core::Logger::fatal("Type hash mismatch when destroying instance. Expected: {}, Actual: {}", hash, instance->getTypeHash());
+                Core::Logger::fatal("Type hash mismatch when destroying instance. Expected: {}, Actual: {}", hash, instance_block->m_type_hash);
                 return;
             }
 
-            instance->~Instance<TInstance>();
-            Arieo::Base::Memory::free(instance);
+            instance_block->~InstanceBlock<TInstance>();
+            Arieo::Base::Memory::free(instance_block);
 
             interface.m_ptr = nullptr;
         }
@@ -544,12 +591,14 @@ namespace Arieo::Base::Interop
     static SharedRef<TInterface> createInstance(Args&&... args)
     {
         // Allocate memory for T + type hash
-        Instance<TInstance>* new_instance = new (Base::Memory::malloc(sizeof(Instance<TInstance>))) Instance<TInstance>(std::forward<Args>(args)...);
+        const uint32_t instance_type_hash = static_cast<uint32_t>(std::hash<std::string_view>{}(typeid(TInstance).name()));
+        TInstance* new_instance = new (Base::Memory::malloc(sizeof(TInstance))) TInstance(std::forward<Args>(args)...);
         RefControlBlock* ref_block = new (Base::Memory::malloc(sizeof(RefControlBlock))) RefControlBlock(
             new_instance,
-            [](void* context) -> void{
-                auto* instance = static_cast<Instance<TInstance>*>(context);
-                instance->~Instance<TInstance>();
+            instance_type_hash,
+            [](void* instance_ptr) -> void{
+                auto* instance = static_cast<TInstance*>(instance_ptr);
+                instance->~TInstance();
                 Base::Memory::free(instance);
             },
             [](RefControlBlock* this_block) -> void{
@@ -558,7 +607,25 @@ namespace Arieo::Base::Interop
             }
         );
 
-        return SharedRef<TInterface>(static_cast<TInterface*>(new_instance->operator->()), ref_block);
+        return SharedRef<TInterface>(new_instance, ref_block);
+    }
+
+    template<typename TInterface, typename TInstance>
+    static SharedRef<TInterface> makePersistentShared(TInstance& instance)
+    {
+        // Allocate memory for T + type hash
+        const uint32_t instance_type_hash = static_cast<uint32_t>(std::hash<std::string_view>{}(typeid(TInstance).name()));
+        TInstance* new_instance = &instance;
+        RefControlBlock* ref_block = new (Base::Memory::malloc(sizeof(RefControlBlock))) RefControlBlock(
+            new_instance,
+            instance_type_hash,
+            nullptr, // No delete callback, instance is managed externally
+            [](RefControlBlock* this_block) -> void{
+                this_block->~RefControlBlock();
+                Base::Memory::free(this_block);
+            }
+        );
+        return SharedRef<TInterface>(new_instance, ref_block);
     }
 }
 
@@ -630,6 +697,11 @@ namespace Arieo::Base::Interop
         std::string getString() const
         {
             return std::string((char*)buf, size);
+        }
+
+        std::string_view getStringView() const
+        {
+            return std::string_view((char*)buf, size);
         }
     };
     static_assert(Base::ct::DLLBoundarySafeCheck<StringView>, "StringView must be DLL boundary safe");

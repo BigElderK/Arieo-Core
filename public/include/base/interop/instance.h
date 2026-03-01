@@ -4,32 +4,28 @@
 #include <cstddef>
 #include <type_traits>
 
-namespace Arieo::Base
+namespace Arieo::Base::Interop
 {
-    // Forward declaration of InteropOld (defined in InteropOld.h)
-    template<typename T>
-    class InteropOld;
-
-    namespace Interop
-    {
-        template<typename T>
-        class WeakRef;
-
-        template<typename T>
-        class RawRef;
-    }
+    template<typename> class SharedRef;
+    template<typename> class WeakRef;
+    template<typename> class RawRef;
 
     class RefControlBlock
     {
     protected:
         std::atomic<uint32_t> m_shared_ref_count{1}; 
         std::atomic<uint32_t> m_weak_ref_count{1}; // weak count starts at 1 (the strong ref group holds one weak ref)
-        void* m_context = nullptr;
+        void* m_instance = nullptr;
+        std::uint32_t m_instance_type_hash = 0;
         void (*m_delete_callback)(void*) = nullptr;
         void (*m_destroy_block_callback)(RefControlBlock*) = nullptr;
+
+        template<typename> friend class SharedRef;
+        template<typename> friend class WeakRef;
+        template<typename> friend class RawRef;
     public:
-        RefControlBlock(void* context, void (*delete_callback)(void*), void (*destroy_block)(RefControlBlock*)) 
-            : m_context(context), m_delete_callback(delete_callback), m_destroy_block_callback(destroy_block) {}
+        RefControlBlock(void* instance, std::uint32_t instance_type_hash, void (*delete_callback)(void*), void (*destroy_block)(RefControlBlock*)) 
+            : m_instance(instance), m_instance_type_hash(instance_type_hash), m_delete_callback(delete_callback), m_destroy_block_callback(destroy_block) {}
 
         // --- Strong refs ---
         uint32_t addRef() 
@@ -41,7 +37,7 @@ namespace Arieo::Base
             uint32_t prev = m_shared_ref_count.fetch_sub(1, std::memory_order_acq_rel);
             if(prev == 1) 
             {
-                if (m_delete_callback) m_delete_callback(m_context);
+                if (m_delete_callback) m_delete_callback(m_instance);
                 releaseWeak(); // release the weak ref held by the strong ref group
             }
             return prev - 1; 
@@ -110,9 +106,9 @@ namespace Arieo::Base
         const TInstance* operator->() const { return &m_instance; }
 
         template<typename TInterface>
-        Base::Interop::RawRef<TInterface> queryInterface()
+        RawRef<TInterface> queryInterface()
         {
-            return Base::Interop::RawRef<TInterface>(static_cast<TInterface*>(&m_instance));
+            return RawRef<TInterface>(static_cast<TInterface*>(&m_instance));
         }
 
         uint32_t getTypeHash() const { return m_type_hash; }

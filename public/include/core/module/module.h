@@ -5,8 +5,8 @@
 #include "core/module/module_context.h"
 #include "base/interop/interface.h"
 #include "base/interop/instance.h"
+#include "base/interop/interop.h"
 
-#include <filesystem>
 #include <variant>
 #include <functional>
 
@@ -15,75 +15,61 @@ namespace Arieo::Core
     class IModuleManager
     {
     public:
-        virtual void loadModuleLib(const std::filesystem::path& module_path, Base::Memory::MemoryManager* defualt_memory_manager) = 0;
+        virtual void loadModuleLib(Base::Interop::StringView module_path, Base::Memory::MemoryManager* defualt_memory_manager) = 0;
     protected:
         friend class ModuleManager;
-        virtual void registerInterface(const std::type_info& type_info, const std::string& instance_alias_name, void* instance) = 0;
-        virtual void* getInterface(std::size_t type_hash, const std::string& instance_alias_name) = 0;
+        virtual void registerInterface(const std::type_info& type_info, Base::Interop::StringView instance_alias_name, Base::Interop::SharedRef<void> instance) = 0;
+        virtual Base::Interop::SharedRef<void> getInterface(std::size_t type_hash, Base::Interop::StringView instance_alias_name) = 0;
     };
 
     class ModuleManager
         : public ProcessSingleton<ModuleManager, IModuleManager>
     {
     public:
-        template<class T>
-        static void registerInterface(std::string instance_name, T* module_interface)
-        {
-            const std::type_info& type_info_of_t = typeid(T);
-            return getProcessSingleton().registerInterface(type_info_of_t, instance_name, module_interface);
-        }
-
-        template<class TInterface, class TInstance>
-        static void registerInstance(std::string instance_name, Base::Instance<TInstance>& module_interface)
+        template<class TInterface>
+        static void registerInterface(Base::Interop::StringView instance_name, Base::Interop::SharedRef<TInterface> interface)
         {
             const std::type_info& type_info_of_t = typeid(TInterface);
-            return getProcessSingleton().registerInterface(type_info_of_t, instance_name, static_cast<TInterface*>(module_interface.operator->()));
+            return getProcessSingleton().registerInterface(type_info_of_t, instance_name.getStringView(), Base::Interop::SharedRef<void>(interface));
         }
 
-        template<class TInterface, class TInstance>
-        static void unregisterInstance(Base::Instance<TInstance>& module_interface)
+        template<class TInterface>
+        static void unregisterInterface(Base::Interop::SharedRef<TInterface> module_interface)
         {
+            // TODO: implement it
         }
-
         // template<class TInterface, class TInstance>
-        // static void registerInstance(std::string instance_name, Base::Interop::SharedRef<TInterface>& module_interface)
+        // static void registerInterface(std::string instance_name, Base::Interop::SharedRef<TInterface>& module_interface)
         // {
         //     const std::type_info& type_info_of_t = typeid(TInterface);
         //     return getProcessSingleton().registerInterface(type_info_of_t, instance_name, module_interface.operator->());
         // }
 
         // template<class TInterface, class TInstance>
-        // static void unregisterInstance(Base::Interop::SharedRef<TInterface>& module_interface)
+        // static void unregisterInterface(Base::Interop::SharedRef<TInterface>& module_interface)
         // {
         // }
         
-        template<class T>
-        static void unregisterInterface(T* module_interface)
-        {
-            //TODO: implement it
-        }
+        // template<class T>
+        // static void unregisterInterface(T* module_interface)
+        // {
+        //     //TODO: implement it
+        // }
 
         template<class T>
-        static Base::Interop::RawRef<T> getInterface(const std::string& instance_name = "")
+        static Base::Interop::SharedRef<T> getInterface(Base::Interop::StringView instance_name = "")
         {
             const std::type_info& type_info_of_t = typeid(T);
             std::size_t type_hash = Base::ct::genCrc32StringID(type_info_of_t.name());
 
-            return Base::Interop::RawRef<T>(
-                reinterpret_cast<T*>(getProcessSingleton().getInterface(type_hash, instance_name))
-            );
+            return getProcessSingleton().getInterface(type_hash, instance_name.getStringView()).queryInterfaceForcely<T>();
         }
 
-        static void* getInterfaceRaw(std::size_t type_hash, const std::string& instance_name = "")
-        {
-            return getProcessSingleton().getInterface(type_hash, instance_name);
-        }
-
-        void loadModuleLib(const std::filesystem::path& module_path, Base::Memory::MemoryManager* defualt_memory_manager) override;
+        void loadModuleLib(Base::Interop::StringView module_path, Base::Memory::MemoryManager* defualt_memory_manager) override;
     protected:
         friend class MainModule;
 
-        void* getInterface(std::size_t type_hash, const std::string& instance_alias_name) override
+        Base::Interop::SharedRef<void> getInterface(std::size_t type_hash, Base::Interop::StringView instance_alias_name) override
         {
             auto iter = m_registered_interfaces.find(type_hash);
             if(iter == m_registered_interfaces.end())
@@ -92,7 +78,8 @@ namespace Arieo::Core
                 return nullptr;
             }
 
-            if(instance_alias_name.length() == 0 || instance_alias_name == "")
+            const auto name_str = instance_alias_name.getString();
+            if(name_str.empty())
             {
                 if(iter->second.size() > 0)
                 {
@@ -101,7 +88,7 @@ namespace Arieo::Core
             }
             else
             {
-                auto iter_2 = iter->second.find(instance_alias_name);
+                auto iter_2 = iter->second.find(name_str);
                 if(iter_2 != iter->second.end())
                 {
                     return iter_2->second;
@@ -111,23 +98,23 @@ namespace Arieo::Core
             return nullptr;
         }
 
-        void registerInterface(const std::type_info& type_info, const std::string& instance_alias_name, void* instance) override
+        void registerInterface(const std::type_info& type_info, Base::Interop::StringView instance_alias_name, Base::Interop::SharedRef<void> instance) override
         {
             std::size_t type_hash = Base::ct::genCrc32StringID(type_info.name());
             
             auto iter = m_registered_interfaces.find(type_hash);
             if(iter == m_registered_interfaces.end())
             {
-                m_registered_interfaces.emplace(type_hash, std::unordered_map<std::string, void*>());
+                m_registered_interfaces.emplace(type_hash, std::unordered_map<std::string, Base::Interop::SharedRef<void>>());
                 iter = m_registered_interfaces.find(type_hash);
             }
             
-            iter->second.emplace(instance_alias_name, instance);
-            Core::Logger::trace("Interface registered: interface {} of {} with hash {}", type_info.name(), instance_alias_name, type_hash);
+            const auto name_str = instance_alias_name.getString();
+            iter->second.emplace(name_str, instance);
+            Core::Logger::trace("Interface registered: interface {} of {} with hash {}", type_info.name(), name_str, type_hash);
         }
 
-        std::unordered_map<std::size_t, std::unordered_map<std::string, void*>> m_registered_interfaces;
-
+        std::unordered_map<std::size_t, std::unordered_map<std::string, Base::Interop::SharedRef<void>>> m_registered_interfaces;
     };
     
     #define GENERATOR_MODULE_ENTRY_FUN() \
