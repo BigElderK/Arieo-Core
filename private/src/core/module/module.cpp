@@ -13,7 +13,7 @@ namespace Arieo::Core
 {
     typedef void (*MODULE_ENTRY_FUN_PTR)(IProcessSingletonRegister*, Base::Memory::MemoryManager* defualt_memory_manager);
     typedef void (*MODULE_MAIN_FUN_PTR)();
-    void ModuleManager::loadModuleLib(Base::Interop::StringView module_path, Base::Memory::MemoryManager* defualt_memory_manager)
+    void ModuleManager::loadModuleLib(const Base::Interop::StringView& module_path, Base::Memory::MemoryManager* defualt_memory_manager)
     {
         const std::string path_str = module_path.getString();
         SystemUtility::Lib::LIBTYPE module_lib = SystemUtility::Lib::loadLibrary(path_str.c_str());
