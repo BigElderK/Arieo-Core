@@ -23,6 +23,18 @@ namespace Arieo::Core::Coroutine
             }
         }
     }
+
+    void Task::appendTasklet(Task::Tasklet&& tasklet)
+    {
+        if (m_preprocess_append_tasklet_delegate != nullptr)
+        {
+            if (m_preprocess_append_tasklet_delegate->preprocess(tasklet))
+            {
+                return;
+            }
+        }
+        m_tasklet_list.emplace_back(std::move(tasklet));
+    }
 }
 
 

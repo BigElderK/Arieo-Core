@@ -21,6 +21,8 @@ namespace Arieo::Core::Coroutine
         virtual ~ITaskletFunc() = default;
     };
 
+    class IPreprocessTaskletDelegate; // defined after Task (needs the nested Task::Tasklet type)
+
     class Task
     {
     public:
@@ -63,7 +65,7 @@ namespace Arieo::Core::Coroutine
 
         Task(Tasklet&& tasklet)
         {
-            m_tasklet_list.emplace_back(std::move(tasklet));
+            appendTasklet(std::move(tasklet));
         }
 
         Task& operator=(Task&& other)
@@ -113,28 +115,23 @@ namespace Arieo::Core::Coroutine
             );
         }
 
-        void appendTasklet(Core::Coroutine::Task::Tasklet&& tasklet)
-        {
-            if(m_preprocess_append_tasklet_fun != nullptr)
-            {
-                if(m_preprocess_append_tasklet_fun(tasklet))
-                {
-                    return;
-                }
-            }
+        void appendTasklet(Tasklet&& tasklet); // body in task.cpp — keeps emplace_back in Core's heap
 
-            m_tasklet_list.emplace_back(
-                std::move(tasklet)
-            );
-        }
-
-        std::function<bool(Tasklet&)> m_preprocess_append_tasklet_fun = nullptr;
+        Base::Interop::SharedRef<IPreprocessTaskletDelegate> m_preprocess_append_tasklet_delegate;
 
         bool isFinished();
         void updateOneStep();
 
         Task(Task&) = delete;
         Task& operator=(Task&) = delete;
+    };
+
+    // Defined here (after Task) so it can reference the nested Task::Tasklet type.
+    class IPreprocessTaskletDelegate
+    {
+    public:
+        virtual bool preprocess(Task::Tasklet& tasklet) = 0;
+        virtual ~IPreprocessTaskletDelegate() = default;
     };
 };
 

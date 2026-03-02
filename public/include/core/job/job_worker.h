@@ -11,13 +11,13 @@ namespace Arieo::Core
             m_task_list.emplace_back(std::move(task));                        
         }
 
-        void updateTasks(std::function<bool(Coroutine::Task::Tasklet&)>&& preprocess_append_tasklet_fun)
+        void updateTasks(Base::Interop::SharedRef<Coroutine::IPreprocessTaskletDelegate> preprocess_append_tasklet_fun)
         {
             for(auto task_iter = m_task_list.begin(); task_iter != m_task_list.end();)
             {
-                if(task_iter->m_preprocess_append_tasklet_fun == nullptr)
+                if(task_iter->m_preprocess_append_tasklet_delegate == nullptr)
                 {
-                    task_iter->m_preprocess_append_tasklet_fun = preprocess_append_tasklet_fun; 
+                    task_iter->m_preprocess_append_tasklet_delegate = preprocess_append_tasklet_fun; 
                 }
 
                 task_iter->updateOneStep();

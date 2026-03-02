@@ -41,15 +41,21 @@ namespace Arieo::Core
                 }
             }
 
-            task.m_preprocess_append_tasklet_fun = 
-                [&task_queue_back](Core::Coroutine::Task::Tasklet& tasklet) -> bool
+            struct QueueTaskletPreprocess final : Coroutine::IPreprocessTaskletDelegate
+            {
+                Base::ConcurrentQueue<Coroutine::Task>& m_queue;
+                explicit QueueTaskletPreprocess(Base::ConcurrentQueue<Coroutine::Task>& q) : m_queue(q) {}
+                bool preprocess(Coroutine::Task::Tasklet& tasklet) override
                 {
-                    if(task_queue_back.enqueue(std::move(tasklet)) == false)
+                    while (m_queue.enqueue(std::move(tasklet)) == false)
                     {
                         std::this_thread::yield();
-                    } 
+                    }
                     return true;
-                };
+                }
+            };
+            task.m_preprocess_append_tasklet_delegate =
+                Base::Interop::SharedRef<Coroutine::IPreprocessTaskletDelegate>::createInstance<QueueTaskletPreprocess>(task_queue_back);
                 
             task.updateOneStep();
             if(task.isFinished() == false)
@@ -101,15 +107,21 @@ namespace Arieo::Core
                             }
                         }
 
-                        task.m_preprocess_append_tasklet_fun = 
-                            [&task_queue_back](Core::Coroutine::Task::Tasklet& tasklet) -> bool
+                        struct QueueTaskletPreprocess final : Coroutine::IPreprocessTaskletDelegate
+                        {
+                            Base::ConcurrentQueue<Coroutine::Task>& m_queue;
+                            explicit QueueTaskletPreprocess(Base::ConcurrentQueue<Coroutine::Task>& q) : m_queue(q) {}
+                            bool preprocess(Coroutine::Task::Tasklet& tasklet) override
                             {
-                                if(task_queue_back.enqueue(std::move(tasklet)) == false)
+                                while (m_queue.enqueue(std::move(tasklet)) == false)
                                 {
                                     std::this_thread::yield();
-                                } 
+                                }
                                 return true;
-                            };
+                            }
+                        };
+                        task.m_preprocess_append_tasklet_delegate =
+                            Base::Interop::SharedRef<Coroutine::IPreprocessTaskletDelegate>::createInstance<QueueTaskletPreprocess>(task_queue_back);
                             
                         task.updateOneStep();
                         if(task.isFinished() == false)
