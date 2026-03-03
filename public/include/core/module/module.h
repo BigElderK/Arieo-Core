@@ -20,7 +20,7 @@ namespace Arieo::Core
         friend class ModuleManager;
         virtual void registerInterface(const std::type_info& type_info, const Base::Interop::StringView& instance_alias_name, Base::Interop::SharedRef<void> instance) = 0;
         virtual void unregisterInterface(const std::type_info& type_info, const Base::Interop::SharedRef<void>& interface) = 0;
-        virtual Base::Interop::SharedRef<void> getInterface(const char* type_name, const Base::Interop::StringView& instance_alias_name) = 0;
+        virtual Base::Interop::SharedRef<void> getInterface(std::size_t type_hash, const Base::Interop::StringView& instance_alias_name) = 0;
     };
 
     class ModuleManager
@@ -44,19 +44,22 @@ namespace Arieo::Core
         template<class T>
         static Base::Interop::SharedRef<T> getInterface(const Base::Interop::StringView& instance_name = "")
         {
-            return getProcessSingleton().getInterface(typeid(T).name(), instance_name.getStringView()).queryInterfaceForcely<T>();
+            const std::type_info& type_info_of_t = typeid(T);
+            std::size_t type_hash = Base::ct::genCrc32StringID(type_info_of_t.name());
+
+            return getProcessSingleton().getInterface(type_hash, instance_name.getStringView()).queryInterfaceForcely<T>();
         }
 
         void loadModuleLib(const Base::Interop::StringView& module_path, Base::Memory::MemoryManager* default_memory_manager) override;
     protected:
         friend class MainModule;
 
-        Base::Interop::SharedRef<void> getInterface(const char* type_name, const Base::Interop::StringView& instance_alias_name) override
+        Base::Interop::SharedRef<void> getInterface(std::size_t type_hash, const Base::Interop::StringView& instance_alias_name) override
         {
-            auto iter = m_registered_interfaces.find(type_name);
+            auto iter = m_registered_interfaces.find(type_hash);
             if(iter == m_registered_interfaces.end())
             {
-                Core::Logger::error("Cannot find interface: {}", type_name);
+                Core::Logger::error("Cannot found interface with hash {}", type_hash);
                 return nullptr;
             }
 
@@ -82,28 +85,28 @@ namespace Arieo::Core
 
         void registerInterface(const std::type_info& type_info, const Base::Interop::StringView& instance_alias_name, Base::Interop::SharedRef<void> instance) override
         {
-            const char* type_name = type_info.name();
+            std::size_t type_hash = Base::ct::genCrc32StringID(type_info.name());
             
-            auto iter = m_registered_interfaces.find(type_name);
+            auto iter = m_registered_interfaces.find(type_hash);
             if(iter == m_registered_interfaces.end())
             {
-                m_registered_interfaces.emplace(type_name, std::unordered_map<std::string, Base::Interop::SharedRef<void>>());
-                iter = m_registered_interfaces.find(type_name);
+                m_registered_interfaces.emplace(type_hash, std::unordered_map<std::string, Base::Interop::SharedRef<void>>());
+                iter = m_registered_interfaces.find(type_hash);
             }
             
             const auto name_str = instance_alias_name.getString();
             iter->second.emplace(name_str, instance);
-            Core::Logger::trace("Interface registered: {} alias '{}'", type_name, name_str);
+            Core::Logger::trace("Interface registered: interface {} of {} with hash {}", type_info.name(), name_str, type_hash);
         }
 
         void unregisterInterface(const std::type_info& type_info, const Base::Interop::SharedRef<void>& interface) override
         {
-            const char* type_name = type_info.name();
+            std::size_t type_hash = Base::ct::genCrc32StringID(type_info.name());
             
-            auto iter = m_registered_interfaces.find(type_name);
+            auto iter = m_registered_interfaces.find(type_hash);
             if(iter == m_registered_interfaces.end())
             {
-                Core::Logger::error("Cannot find interface: {} when unregistering", type_name);
+                Core::Logger::error("Cannot found interface with hash {} when unregistering", type_hash);
                 return;
             }
             
@@ -113,11 +116,11 @@ namespace Arieo::Core
             if(iter_2 != iter->second.end())
             {
                 iter->second.erase(iter_2);
-                Core::Logger::trace("Interface unregistered: {}", type_name);
+                Core::Logger::trace("Interface unregistered: interface {} with hash {}", type_info.name(), type_hash);
             }
         }
 
-        std::unordered_map<std::string, std::unordered_map<std::string, Base::Interop::SharedRef<void>>> m_registered_interfaces;
+        std::unordered_map<std::size_t, std::unordered_map<std::string, Base::Interop::SharedRef<void>>> m_registered_interfaces;
     };
     
     #define GENERATOR_MODULE_ENTRY_FUN() \
