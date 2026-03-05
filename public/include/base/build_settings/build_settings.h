@@ -18,6 +18,9 @@
 #elif defined(__APPLE__)
     #define ARIEO_PLATFORM_APPLE
     #define ARIEO_PLATFORM_NAME "Apple"
+#elif defined(__EMSCRIPTEN__)
+    #define ARIEO_PLATFORM_EMSCRIPTEN
+    #define ARIEO_PLATFORM_NAME "Emscripten"
 #else
     #define ARIEO_PLATFORM_NAME "Unknown"
 #endif
