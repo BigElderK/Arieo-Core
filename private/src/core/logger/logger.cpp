@@ -72,20 +72,23 @@ namespace Arieo::Core
         localtime_r(&in_time_t, &time_info);
 #endif
 
+        std::unique_lock<std::mutex> lock(g_logger_mutex);
+        g_default_logger = el::Loggers::getLogger(logger_name);
+
+#if not defined(ARIEO_PLATFORM_EMSCRIPTEN)
         std::stringstream log_file_name_stream;
         log_file_name_stream 
             << SystemUtility::FileSystem::getFormalizedPath("${EXE_DIR}/logs/") 
             << std::put_time(&time_info, "%Y-%m-%d_%H-%M-%S")
             << ".log";
 
-        std::unique_lock<std::mutex> lock(g_logger_mutex);
-        g_default_logger = el::Loggers::getLogger(logger_name);
-
         // Configure the default logger location
         el::Loggers::reconfigureAllLoggers(
             el::ConfigurationType::Filename, 
             log_file_name_stream.str()
         );
+#endif
+
 #if defined(ARIEO_PLATFORM_ANDROID)
         el::Helpers::installLogDispatchCallback<LogDispatchCallback>("LogDispatchCallback");
         LogDispatchCallback* dispatcher = el::Helpers::logDispatchCallback<LogDispatchCallback>("LogDispatchCallback");
