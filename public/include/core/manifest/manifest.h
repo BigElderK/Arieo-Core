@@ -22,10 +22,12 @@ namespace Arieo::Core
         const std::vector<std::filesystem::path> getAllEngineModulePaths() const;
 
         Core::ConfigNode& getSystemNode();
+        const std::string& getManifestContext() const;
     private:
         Core::ConfigNode m_manifest_node;
         Core::ConfigNode m_system_node;
         std::string m_host_os_name;
+        std::string m_manifest_context;
     };
 }
 

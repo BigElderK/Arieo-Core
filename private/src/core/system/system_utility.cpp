@@ -59,11 +59,10 @@ namespace Arieo::Core
     std::string SystemUtility::FileSystem::getFormalizedPath(const std::string& formalized_path)
     {
         std::string result_path = formalized_path;
-        std::filesystem::path module_path = std::filesystem::absolute(getModulePath().parent_path());
         std::filesystem::path exe_path = std::filesystem::absolute(getExePath().parent_path());
 
         Base::StringUtility::replaceAll(result_path, "${EXE_DIR}", exe_path.string());
-        Base::StringUtility::replaceAll(result_path, "${MODULE_DIR}", module_path.string());
+        // Base::StringUtility::replaceAll(result_path, "${MODULE_DIR}", std::filesystem::absolute(getModulePath().parent_path()).string());
 
         // Replace environment variables in the format of $ENV{VAR_NAME}
         {

@@ -13,7 +13,8 @@ namespace Arieo::Core
     {
         m_manifest_node = Core::ConfigFile::Load(manifest_content);
         m_host_os_name = Core::SystemUtility::getHostOSName();
-
+        m_manifest_context = manifest_content;
+        
         // Set environments from manifest
         m_system_node = m_manifest_node["app"]["host_os"][m_host_os_name];
         if (m_system_node.IsDefined() == false)
@@ -172,6 +173,11 @@ namespace Arieo::Core
         }
 
         return result;
+    }
+
+    const std::string& Manifest::getManifestContext() const
+    {
+        return m_manifest_context;
     }
 
     Core::ConfigNode& Manifest::getSystemNode()
